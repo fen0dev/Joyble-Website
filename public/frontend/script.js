@@ -2,7 +2,13 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Call AnimationModule.init() explicitly if it wasn't auto-executed
     if (typeof AnimationModule !== 'undefined') {
-        AnimationModule.init();
+        setTimeout(function() {
+            AnimationModule.init();
+        }, 1200);
+    }
+    
+    if (typeof SliderModule !== 'undefined') {
+        SliderModule.init();
     }
     
     if (typeof ModalModule !== 'undefined') {
