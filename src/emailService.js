@@ -10,7 +10,9 @@ let transporter;
 
 try {
     transporter = nodemailer.createTransport({
-        service: 'gmail',
+        service: 'mail.joyble.dk',
+        port: 587,
+        secure: false,
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS
@@ -33,17 +35,24 @@ const sanitizeForEmail = (content) => {
 
   const sendSignupNotification = async (userData) => {
     if (!transporter) {
-      throw new Error('Email service not configured correctly');
+      console.warn('Email service not configured correctly - skipping email notification');
+      return { skipped: true, reason: 'Email transporter not configured' };
     }
-    
+
     try {
+      // Skip sending emails in development mode unless explicitly enabled
+      if (process.env.NODE_ENV !== 'production' && process.env.ENABLE_EMAILS !== 'true') {
+        console.log('Skipping email in development mode');
+        return { skipped: true, reason: 'Development mode' };
+      }
+
       // Sanitize user data for email
       const sanitizedName = sanitizeForEmail(userData.name);
       const sanitizedEmail = sanitizeForEmail(userData.email);
       const sanitizedMessage = sanitizeForEmail(userData.message || 'No message provided');
-      
+
       const mailOptions = {
-        from: `"Joyble Test Program" <${process.env.EMAIL_USER}>`,
+        from: `"Joyble" <${process.env.EMAIL_USER}>`,
         to: process.env.NOTIFICATION_EMAIL || 'contact@joyble.dk',
         subject: 'New Joyble Test Program Signup',
         html: `
@@ -60,18 +69,24 @@ const sanitizeForEmail = (content) => {
         // Text version for clients that don't support HTML
         text: `New Test Program Signup!\n\nName: ${sanitizedName}\nEmail: ${sanitizedEmail}\nMessage: ${sanitizedMessage}\nTime: ${new Date().toLocaleString()}\n\nThis is an automated notification from the Joyble website.`
       };
-  
+
       // Optional: Send a confirmation email to the user as well
       const sendUserConfirmation = process.env.SEND_USER_CONFIRMATION === 'true';
-      
+
       if (sendUserConfirmation) {
-        await sendConfirmationToUser(sanitizedEmail, sanitizedName);
+        try {
+          await sendConfirmationToUser(sanitizedEmail, sanitizedName);
+        } catch (err) {
+          console.error('User confirmation email failed:', err);
+          // Don't rethrow - we still want to try sending the notification email
+        }
       }
-  
+
       return await transporter.sendMail(mailOptions);
     } catch (error) {
       console.error('Email sending failed:', error);
-      throw error;
+      // Log but don't throw - allow the signup to complete without email
+      return { error: error.message, skipped: true };
     }
 };
 

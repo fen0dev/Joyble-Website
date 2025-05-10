@@ -38,6 +38,7 @@ const validateSignup = [
 ];
 
 router.post('/', validateSignup, async (req, res) => {
+    console.log('Received signup request:', req.body);
     try {
         const errors = validationResult(req);
 
@@ -51,21 +52,40 @@ router.post('/', validateSignup, async (req, res) => {
         const { name, email, message } = req.body;
 
         // save to firestore
-        await db.collection('signups').add({
+        const docRef = await db.collection('signups').add({
             name,
             email,
             message: message || '',
             createdAt: new Date(),
-            ipAddress: req.ip 
+            ipAddress: req.ip
         });
 
-        await sendSignupNotification({ name, email, message });
+        console.log(`User signup saved to Firebase with ID: ${docRef.id}`);
+
+        // Try to send notification email, but don't block signup if it fails
+        try {
+            const emailResult = await sendSignupNotification({ name, email, message });
+            if (emailResult && emailResult.skipped) {
+                console.log('Email notification skipped:', emailResult.reason || 'Unknown reason');
+            } else {
+                console.log('Email notification sent successfully');
+            }
+        } catch (emailError) {
+            console.error('Failed to send email notification, but signup was saved:', emailError);
+            // Continue with success response anyway - signup was saved
+        }
 
         res.status(200).json({ success: true });
     } catch (error) {
         console.error('Error processing signup:', error);
-        res.status(400).json({ success: false, error: 'Authentication error'});
-        res.status(500).json({ success: false, error: 'Server error processing request'});
+        // Log more detailed error info for debugging
+        if (error.stack) console.error(error.stack);
+        if (error.code) console.error('Error code:', error.code);
+
+        if (error.code && error.code.startsWith('auth/')) {
+            return res.status(400).json({ success: false, error: 'Authentication error'});
+        }
+        return res.status(500).json({ success: false, error: 'Server error processing request: ' + error.message});
     }
 });
 

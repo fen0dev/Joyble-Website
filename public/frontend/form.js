@@ -58,7 +58,7 @@ const FormModule = (function() {
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Submitting...';
                 
-                submitToServer(name, email, message)
+                submitToFirebase(name, email, message)
                     .then(() => {
                         showSuccess('Thanks for signing up! We\'ll be in touch soon.');
                         form.reset();
@@ -199,7 +199,7 @@ const FormModule = (function() {
     function clearError(inputElement) {
         inputElement.classList.remove('input-error');
         inputElement.classList.add('input-success');
-        const errorMessage = inputElement.parentElement.querySelector('error-message');
+        const errorMessage = inputElement.parentElement.querySelector('.error-message');
         if (errorMessage) {
             errorMessage.textContent = '';
         }
@@ -211,7 +211,7 @@ const FormModule = (function() {
             input.classList.remove('input-error', 'input-success');
         });
 
-        const errorMessages = document.getElementById('.error-message');
+        const errorMessages = document.querySelectorAll('.error-message');
         errorMessages.forEach(el => {
             el.textContent = '';
         });

@@ -21,12 +21,13 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             imgSrc: ["'self'", "data:"],
-            scriptSrc: ["'self'"]
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            connectSrc: ["'self'", "https://joyble-app.firebaseio.com", "https://identitytoolkit.googleapis.com"]
         }
     }
 }));
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' ? 'https://joyble.dk' : 'http:localhost:3000',
+    origin: process.env.NODE_ENV === 'production' ? 'https://joyble.dk' : 'http://localhost:8080',
     methods: ['GET' ,'POST'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -34,7 +35,7 @@ app.use(cors({
 // rate limiting - general API limit
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 500, // Increased for static assets
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many requests from this IP, please try again later'
@@ -52,25 +53,37 @@ const signupLimiter = rateLimit({
 // middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true}));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Static files middleware with correct MIME types
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    }
+  }
+}));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use(apiLimiter);
 
-// routes
-app.post('/api/signup', signupLimiter, require('./src/routes/signup'));
+// routes - initialize with router
+const signupRouter = require('./src/routes/signup');
+app.use('/api/signup', signupLimiter, signupRouter);
 
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-      success: false,
-      error: 'Something went wrong on the server'
-    });
-});
-  
-
+// 404 handler - must come after all valid routes
 app.use((req, res) => {
+    console.log(`404 Not Found: ${req.method} ${req.originalUrl}`);
     res.status(404).json({
       success: false,
       error: 'Resource not found'
+    });
+});
+
+// Error handler - must be last
+app.use((err, req, res, next) => {
+    console.error('Server error:', err.stack);
+    res.status(500).json({
+      success: false,
+      error: 'Something went wrong on the server'
     });
 });
 
