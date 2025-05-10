@@ -3,23 +3,16 @@
  * After user sign up for test program
 */
 
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 const sanitizeHtml = require('sanitize-html');
 
-let transporter;
-
+// Initialize SendGrid with API key
 try {
-    transporter = nodemailer.createTransport({
-        service: 'mail.joyble.dk',
-        port: 587,
-        secure: false,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
+    // Set API key for SendGrid
+    sgMail.setApiKey(process.env.EMAIL_PASS);
+    console.log('SendGrid initialized with API key');
 } catch (error) {
-    console.error('failed to create email transporter:', error);
+    console.error('Failed to initialize SendGrid:', error);
 }
 
 // Sanitize content for email
@@ -33,12 +26,7 @@ const sanitizeForEmail = (content) => {
     });
   };
 
-  const sendSignupNotification = async (userData) => {
-    if (!transporter) {
-      console.warn('Email service not configured correctly - skipping email notification');
-      return { skipped: true, reason: 'Email transporter not configured' };
-    }
-
+const sendSignupNotification = async (userData) => {
     try {
       // Skip sending emails in development mode unless explicitly enabled
       if (process.env.NODE_ENV !== 'production' && process.env.ENABLE_EMAILS !== 'true') {
@@ -51,8 +39,9 @@ const sanitizeForEmail = (content) => {
       const sanitizedEmail = sanitizeForEmail(userData.email);
       const sanitizedMessage = sanitizeForEmail(userData.message || 'No message provided');
 
-      const mailOptions = {
-        from: `"Joyble" <${process.env.EMAIL_USER}>`,
+      // Use the SendGrid designated sender
+      const msg = {
+        from: `noreply@${process.env.EMAIL_USER}`, // Format sender based on verified domain
         to: process.env.NOTIFICATION_EMAIL || 'contact@joyble.dk',
         subject: 'New Joyble Test Program Signup',
         html: `
@@ -82,9 +71,16 @@ const sanitizeForEmail = (content) => {
         }
       }
 
-      return await transporter.sendMail(mailOptions);
+      console.log('Sending notification email via SendGrid');
+      await sgMail.send(msg);
+      console.log('Notification email sent successfully');
+      return { success: true };
+
     } catch (error) {
       console.error('Email sending failed:', error);
+      if (error.response) {
+        console.error('SendGrid error details:', error.response.body);
+      }
       // Log but don't throw - allow the signup to complete without email
       return { error: error.message, skipped: true };
     }
@@ -92,8 +88,9 @@ const sanitizeForEmail = (content) => {
 
 const sendConfirmationToUser = async (email, name) => {
     try {
-      const mailOptions = {
-        from: `"Joyble" <${process.env.EMAIL_USER}>`,
+      // Use the SendGrid designated sender
+      const msg = {
+        from: `noreply@${process.env.EMAIL_USER}`, // Format sender based on verified domain
         to: email,
         subject: 'Welcome to the Joyble Test Program',
         html: `
@@ -111,11 +108,18 @@ const sendConfirmationToUser = async (email, name) => {
         `,
         text: `Thank You for Signing Up!\n\nHello ${name},\n\nThank you for signing up for the Joyble Test Program. We've received your application and will be in touch shortly with next steps.\n\nIn the meantime, feel free to join our Discord community where you can connect with other testers and get exclusive updates: https://discord.gg/joyble\n\nIf you have any questions, feel free to reply to this email!\n\nBest regards,\nThe Joyble Team`
       };
-  
-      return await transporter.sendMail(mailOptions);
+
+      console.log('Sending confirmation email to user');
+      await sgMail.send(msg);
+      console.log('User confirmation email sent successfully');
+      return { success: true };
     } catch (error) {
       console.error('User confirmation email failed:', error);
+      if (error.response) {
+        console.error('SendGrid error details:', error.response.body);
+      }
       // Don't throw error here, as this is optional and shouldn't block the signup process
+      return { error: error.message, skipped: true };
     }
   };
 

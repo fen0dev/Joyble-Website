@@ -67,6 +67,14 @@ router.post('/', validateSignup, async (req, res) => {
             const emailResult = await sendSignupNotification({ name, email, message });
             if (emailResult && emailResult.skipped) {
                 console.log('Email notification skipped:', emailResult.reason || 'Unknown reason');
+
+                // Email didn't send, but that's okay - let's log the signup info for manual follow-up
+                console.log(`== SIGNUP DATA (No email sent) ==`);
+                console.log(`Name: ${name}`);
+                console.log(`Email: ${email}`);
+                console.log(`Message: ${message || 'No message provided'}`);
+                console.log(`Time: ${new Date().toLocaleString()}`);
+                console.log(`== END SIGNUP DATA ==`);
             } else {
                 console.log('Email notification sent successfully');
             }
