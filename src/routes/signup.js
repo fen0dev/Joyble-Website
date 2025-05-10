@@ -8,6 +8,7 @@ const { db } = require('../firebase');
 const { sendSignupNotification } = require('../emailService');
 const { body, validationResult } = require('express-validator');
 const sanitizeHtml = require('sanitize-html');
+const { logSignup } = require('../fallbackLogger');
 
 const validateSignup = [
     // name validation
@@ -75,11 +76,23 @@ router.post('/', validateSignup, async (req, res) => {
                 console.log(`Message: ${message || 'No message provided'}`);
                 console.log(`Time: ${new Date().toLocaleString()}`);
                 console.log(`== END SIGNUP DATA ==`);
+
+                // Also log to a file for backup if enabled
+                if (process.env.ENABLE_FALLBACK_LOGGING === 'true') {
+                    logSignup({ name, email, message });
+                }
             } else {
                 console.log('Email notification sent successfully');
             }
         } catch (emailError) {
             console.error('Failed to send email notification, but signup was saved:', emailError);
+
+            // Log to file as backup
+            if (process.env.ENABLE_FALLBACK_LOGGING === 'true') {
+                logSignup({ name, email, message });
+                console.log('Signup data logged to backup file for manual processing');
+            }
+
             // Continue with success response anyway - signup was saved
         }
 

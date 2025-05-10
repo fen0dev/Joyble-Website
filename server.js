@@ -52,7 +52,7 @@ const signupLimiter = rateLimit({
 
 // middleware
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true}));
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Static files middleware with correct MIME types
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -67,7 +67,10 @@ app.use(apiLimiter);
 
 // routes - initialize with router
 const signupRouter = require('./src/routes/signup');
+const adminRouter = require('./src/routes/admin');
+
 app.use('/api/signup', signupLimiter, signupRouter);
+app.use('/api/admin', adminRouter);
 
 // 404 handler - must come after all valid routes
 app.use((req, res) => {

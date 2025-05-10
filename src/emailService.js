@@ -3,14 +3,33 @@
  * After user sign up for test program
 */
 
+// Make sure to load environment variables
+require('dotenv').config();
+
 const sgMail = require('@sendgrid/mail');
 const sanitizeHtml = require('sanitize-html');
 
 // Initialize SendGrid with API key
 try {
+    // Log configuration for debugging
+    console.log('Email configuration:');
+    console.log(`- Using sender domain: ${process.env.EMAIL_USER}`);
+    console.log(`- Notification email: ${process.env.NOTIFICATION_EMAIL}`);
+    console.log(`- Environment: ${process.env.NODE_ENV}`);
+
     // Set API key for SendGrid
     sgMail.setApiKey(process.env.EMAIL_PASS);
     console.log('SendGrid initialized with API key');
+
+    // Verify the API key is working
+    sgMail.client.request({
+        method: 'GET',
+        url: '/v3/user/credits',
+    })
+    .then(() => console.log('✅ SendGrid API key validated successfully'))
+    .catch(error => {
+        console.error('❌ SendGrid API key validation error:', error.message);
+    });
 } catch (error) {
     console.error('Failed to initialize SendGrid:', error);
 }
@@ -28,10 +47,12 @@ const sanitizeForEmail = (content) => {
 
 const sendSignupNotification = async (userData) => {
     try {
-      // Skip sending emails in development mode unless explicitly enabled
-      if (process.env.NODE_ENV !== 'production' && process.env.ENABLE_EMAILS !== 'true') {
-        console.log('Skipping email in development mode');
-        return { skipped: true, reason: 'Development mode' };
+      // Force email sending regardless of environment (we're in production)
+      console.log(`Current environment: ${process.env.NODE_ENV || 'not set'}`);
+
+      // Only log this for debugging, but always try to send emails
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Note: Not in production mode, but sending email anyway');
       }
 
       // Sanitize user data for email
@@ -71,9 +92,16 @@ const sendSignupNotification = async (userData) => {
         }
       }
 
-      console.log('Sending notification email via SendGrid');
-      await sgMail.send(msg);
-      console.log('Notification email sent successfully');
+      console.log('Sending notification email via SendGrid:');
+      console.log(`- From: noreply@${process.env.EMAIL_USER}`);
+      console.log(`- To: ${process.env.NOTIFICATION_EMAIL || 'contact@joyble.dk'}`);
+      console.log(`- Subject: New Joyble Test Program Signup`);
+
+      // Send the email
+      const response = await sgMail.send(msg);
+      console.log(`✅ Notification email sent successfully! Status: ${response[0].statusCode}`);
+      console.log(`Response headers: ${JSON.stringify(response[0].headers)}`);
+      
       return { success: true };
 
     } catch (error) {
@@ -109,9 +137,12 @@ const sendConfirmationToUser = async (email, name) => {
         text: `Thank You for Signing Up!\n\nHello ${name},\n\nThank you for signing up for the Joyble Test Program. We've received your application and will be in touch shortly with next steps.\n\nIn the meantime, feel free to join our Discord community where you can connect with other testers and get exclusive updates: https://discord.gg/joyble\n\nIf you have any questions, feel free to reply to this email!\n\nBest regards,\nThe Joyble Team`
       };
 
-      console.log('Sending confirmation email to user');
-      await sgMail.send(msg);
-      console.log('User confirmation email sent successfully');
+      console.log(`Sending confirmation email to user: ${email}`);
+      console.log(`- From: noreply@${process.env.EMAIL_USER}`);
+
+      // Send the email
+      const response = await sgMail.send(msg);
+      console.log(`✅ User confirmation email sent successfully! Status: ${response[0].statusCode}`);
       return { success: true };
     } catch (error) {
       console.error('User confirmation email failed:', error);
