@@ -7,7 +7,7 @@ const serviceAccount = require('./serviceAccountKey.json');
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    databseURL: 'https://joyble-app.firebaseio.com'
+    databseURL: 'https://joyble-app.firebaseapp.com'
 });
 
 const db = admin.firestore();
