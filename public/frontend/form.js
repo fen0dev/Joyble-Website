@@ -29,8 +29,26 @@ const FormModule = (function() {
     }
     
     function submitToFirebase(name, email, message) {
-        // This function will be implemented when you connect Firebase
-        // It will handle the actual data submission to your Firebase database
+        fetch('/api/signup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name, email, message }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Thanks for signing up! We will be in touch soon');
+                document.getElementById('signup-form').reset();
+            } else {
+                alert('Something went wrong. Please try again later.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Something went wrong. Please try again later.');
+        });
     }
     
     // Public methods

@@ -773,7 +773,8 @@ header .container {
 
 .discord-logo {
     margin-top: 10px;
-    display: relative;
+    display: flex;
+    justify-content: center;
     align-items: center;
 }
 
